@@ -1,4 +1,4 @@
-﻿namespace EShop.Web.Models.Domain
+﻿ namespace EShop.Web.Models.Domain
 {
     public class ProductInShoppingCart
     {
@@ -6,6 +6,9 @@
         public Product Product { get; set; }
         public Guid ShoppingCartId { get; set; }
         public ShoppingCart ShoppingCart { get; set; }
+
+        public int Quantity { get; set; }
+
 
 
     }
