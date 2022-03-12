@@ -8,12 +8,16 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using EShop.Web.Data;
 using EShop.Web.Models.Domain;
+using EShop.Web.Models.DTO;
+using System.Security.Claims;
 
 namespace EShop.Web.Controllers
 {
     public class ProductsController : Controller
     {
         private readonly ApplicationDbContext _context;
+
+        public object AddShoppingCardDto { get; private set; }
 
         public ProductsController(ApplicationDbContext context)
         {
@@ -24,6 +28,50 @@ namespace EShop.Web.Controllers
         public async Task<IActionResult> Index()
         {
             return View(await _context.Products.ToListAsync());
+        }
+
+
+        public async Task<IActionResult> AddProductToCard(Guid? id)
+        {
+            var product = await _context.Products.Where(z => z.Id.Equals(id)).FirstOrDefaultAsync();
+            AddToShoppingCardDto model = new AddToShoppingCardDto
+            {
+                SelectedProduct = product,
+                ProductId = product.Id,
+                Quantity = 1
+            };
+            return View(model);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddProductToCard([Bind("ProductId","Quantity")] AddToShoppingCardDto item)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userShoppingCard = await _context.ShoppingCarts.Where(z => z.OwnerId.Equals(userId)).FirstOrDefaultAsync();
+            
+            if(item.ProductId != null && userShoppingCard != null)
+            {
+                var product = await _context.Products.Where(z => z.Id.Equals(item.ProductId)).FirstOrDefaultAsync();
+
+                if(product != null)
+                {
+                    ProductInShoppingCart itemToAdd = new ProductInShoppingCart
+                    {
+                        Product = product,
+                        ProductId = product.Id,
+                        ShoppingCart = userShoppingCard,
+                        ShoppingCartId = userShoppingCard.Id,
+                        Quantity = item.Quantity
+                    };
+
+                    _context.Add(itemToAdd);
+                    await _context.SaveChangesAsync();
+                }
+                return RedirectToAction("Index", "Products");
+            }
+
+            return View(item); 
         }
 
         // GET: Products/Details/5
